@@ -117,20 +117,40 @@ class HBNBCommand(cmd.Cmd):
 
     def do_create(self, line):
         """ Create an object of any class"""
-        args = line.split(" ")
-
-        if not line or len(line) == 0:
+   
+        if line == "" or line is None:
             print("** class name missing **")
-        elif args[0] not in HBNBCommand().classes.keys():
-            print("** class doesn't exist **")
-
-        obj = eval("{}()".format(args[0]))
-        for param in args[1:]:
-            my_param = param.split("=")
-            my_param[1] = my_param[1].replace('_', ' ')
-            setattr(obj, my_param[0], eval(my_param[1]))
-        obj.save()
-        print("{}".format(obj.id))
+        else:
+            my_list = line.split(" ")
+            classname = my_list[0]
+            if classname not in storage.classes():
+                print("** class doesn't exist **")
+                return
+            obj = eval("{}()".format(classname))
+            for i in range(1, len(my_list)):
+                rex = r'^(\S+)\=(\S+)'
+                match = re.search(rex, my_list[i])
+                if not match:
+                    continue
+                key = match.group(1)
+                value = match.group(2)
+                cast = None
+                if not re.search('^".*"$', value):
+                    if '.' in value:
+                        cast = float
+                    else:
+                        cast = int
+                else:
+                    value = value.replace('"', '')
+                    value = value.replace('_', ' ')
+                if cast:
+                    try:
+                        value = cast(value)
+                    except ValueError:
+                        pass
+                setattr(obj, key, value)
+            obj.save()
+            print("{}".format(obj.id))
 
     def help_create(self):
         """ Help information for the create method """
