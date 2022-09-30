@@ -1,36 +1,68 @@
 #!/usr/bin/python3
-""" 0x03. AirBnB clone - Deploy static, task 2. Deploy archive!
-"""
-from fabric.api import env, put, run
-from os import path
+'''
+fabric script to distribute an archive to web servers
+----NEEDS TO REVISIT SCRIPT
+'''
 
-env.hosts = ['35.196.49.136', '34.74.70.223']
-env.user = 'ubuntu'
+import os
+from datetime import datetime
+from fabric.api import env, local, put, run, runs_once
+
+
+env.hosts = ['34.138.32.248', '3.226.74.205']
 
 
 def do_deploy(archive_path):
-    """ Distributes a .tgz archive from the contents of `web_static/` in AirBnB
-    clone repo to the web servers
-
-    Retruns:
-        (bool): `True` if all operations successful, `False` otherwise
+    """Distributes an archive to a web server.
+    Args:
+        archive_path (str): The path of the archive to distribute.
+    Returns:
+        If the file doesn't exist at archive_path or an error occurs - False.
+        Otherwise - True.
     """
-    if not path.exists(archive_path) or archive_path is None:
+    if not os.path.isdir("versions"):
+        os.mkdir("versions")
+    cur_time = datetime.now()
+    output = "versions/web_static_{}{}{}{}{}{}.tgz".format(
+        cur_time.year,
+        cur_time.month,
+        cur_time.day,
+        cur_time.hour,
+        cur_time.minute,
+        cur_time.second
+    )
+    try:
+        print("Packing web_static to {}".format(output))
+        local("tar -cvzf {} web_static".format(output))
+        archize_size = os.stat(output).st_size
+        print("web_static packed: {} -> {} Bytes".format(output, archize_size))
+    except Exception:
+        output = None
+    return output
+
+
+def do_deploy(archive_path):
+    """Deploys the static files to the host servers.
+    Args:
+        archive_path (str): The path to the archived static files.
+    """
+    if not os.path.exists(archive_path):
         return False
-
-    f_name = path.basename(archive_path)
-    d_name = f_name.split('.')[0]
-
-    put(local_path=archive_path, remote_path='/tmp/')
-    run('mkdir -p /data/web_static/releases/{}/'.format(d_name))
-    run('tar -xzf /tmp/{} -C /data/web_static/releases/{}/'.format(
-        f_name, d_name))
-    run('rm /tmp/{}'.format(f_name))
-    run('mv /data/web_static/releases/{}/web_static/* '.format(d_name) +
-        '/data/web_static/releases/{}/'.format(d_name))
-    run('rm -rf /data/web_static/releases/{}/web_static'.format(d_name))
-    run('rm -rf /data/web_static/current')
-    run('ln -s /data/web_static/releases/{}/ /data/web_static/current'.format(
-        d_name))
-
-    return True
+    file_name = os.path.basename(archive_path)
+    folder_name = file_name.replace(".tgz", "")
+    folder_path = "/data/web_static/releases/{}/".format(folder_name)
+    success = False
+    try:
+        put(archive_path, "/tmp/{}".format(file_name))
+        run("mkdir -p {}".format(folder_path))
+        run("tar -xzf /tmp/{} -C {}".format(file_name, folder_path))
+        run("rm -rf /tmp/{}".format(file_name))
+        run("mv {}web_static/* {}".format(folder_path, folder_path))
+        run("rm -rf {}web_static".format(folder_path))
+        run("rm -rf /data/web_static/current")
+        run("ln -s {} /data/web_static/current".format(folder_path))
+        print('New version deployed!')
+        success = True
+    except Exception:
+        success = False
+    return success

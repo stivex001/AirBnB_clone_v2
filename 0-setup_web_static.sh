@@ -1,36 +1,48 @@
 #!/usr/bin/env bash
-# prepares simple nginx servers for static deployment of `web-static`
-service nginx status
-if (( $? != 0 )); then
-    apt-get -y update
-    apt-get -y install nginx
-    find /var/www/html/index.html
-    if (( $? != 0 )); then
-        mkdir -p /var/www/html/
-        echo 'Holberton School' > /var/www/html/index.html
-    fi
-    service nginx restart
-fi
+# sets up my web servers for the deployment of web_static
 
-mkdir -p /data/web_static/shared/
-find /data/web_static/releases/test/index.html
-if (( $? != 0 )); then
-    mkdir -p /data/web_static/releases/test/
-    echo "<html>
-  <head>
-  </head>
-  <body>
-    Holberton School
-  </body>
-</html>" > /data/web_static/releases/test/index.html
-    ln -sf /data/web_static/releases/test/ /data/web_static/current
-fi
+echo -e "\e[1;32m START\e[0m"
 
-chown -R ubuntu:ubuntu /data/
+#--Updating the packages
+sudo apt-get -y update
+sudo apt-get -y install nginx
+echo -e "\e[1;32m Packages updated\e[0m"
+echo
 
-grep -q "location \/hbnb_static\/ {$" /etc/nginx/sites-available/default
-if (( $? != 0 )); then
-    cp /etc/nginx/sites-available/default /etc/nginx/sites-available/default.bup
-    sed -i "0,/^\tlocation \/ {$/s/^\tlocation \/ {$/\tlocation \/hbnb_static\/ {\n\t\talias \/data\/web_static\/current\/;\n\t\tautoindex off;\n\t}\n\n\tlocation \/ {/" /etc/nginx/sites-available/default
-    service nginx reload
-fi
+#--configure firewall
+sudo ufw allow 'Nginx HTTP'
+echo -e "\e[1;32m Allow incomming NGINX HTTP connections\e[0m"
+echo
+
+#--created the dir
+sudo mkdir -p /data/web_static/releases/test /data/web_static/shared
+echo -e "\e[1;32m directories created"
+echo
+
+#--adds test string
+echo "<h1>Welcome to www.beta-scribbles.tech</h1>" > /data/web_static/releases/test/index.html
+echo -e "\e[1;32m Test string added\e[0m"
+echo
+
+#--prevent overwrite
+if [ -d "/data/web_static/current" ];
+then
+    echo "path /data/web_static/current exists"
+    sudo rm -rf /data/web_static/current;
+fi;
+echo -e "\e[1;32m prevent overwrite\e[0m"
+echo
+
+#--create symbolic link
+sudo ln -sf /data/web_static/releases/test/ /data/web_static/current
+sudo chown -hR ubuntu:ubuntu /data
+
+sudo sed -i '38i\\tlocation /hbnb_static/ {\n\t\talias /data/web_static/current/;\n\t}\n' /etc/nginx/sites-available/default
+
+sudo ln -sf '/etc/nginx/sites-available/default' '/etc/nginx/sites-enabled/default'
+echo -e "\e[1;32m Symbolic link created\e[0m"
+echo
+
+#--restart NGINX
+sudo service nginx restart
+echo -e "\e[1;32m restart NGINX\e[0m"

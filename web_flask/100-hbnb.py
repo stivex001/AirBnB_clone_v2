@@ -1,40 +1,31 @@
 #!/usr/bin/python3
-"""0x04. AirBnB clone - Web framework, task 12. HBNB is alive!
+"""Starts a Flask web application.
+The application listens on 0.0.0.0, port 5000.
+Routes:
+    /hbnb: HBnB home page.
 """
-from flask import Flask, render_template
-from os import environ
 from models import storage
-from models.state import State
-from models.city import City
-from models.amenity import Amenity
-from models.place import Place
-from models.user import User
-
+from flask import Flask
+from flask import render_template
 
 app = Flask(__name__)
-environ['FLASK_ENV'] = 'development'
+
+
+@app.route("/hbnb", strict_slashes=False)
+def hbnb():
+    """Displays the main HBnB filters HTML page."""
+    states = storage.all("State")
+    amenities = storage.all("Amenity")
+    places = storage.all("Place")
+    return render_template("100-hbnb.html",
+                           states=states, amenities=amenities, places=places)
 
 
 @app.teardown_appcontext
-def states_list_teardown(self):
-    """ Ensures SQLAlchemy session opened to serve dynamic content for HTML
-    templates is closed after serving.
-    """
+def teardown(exc):
+    """Remove the current SQLAlchemy session."""
     storage.close()
 
 
-@app.route('/hbnb', strict_slashes=False)
-def hbnb():
-    """ Requests dicts of `State`, `City`, `Amenity`, and `Place` objects,
-    which then populate the HTML template served to '/hbnb_filters'.
-    """
-    return render_template('100-hbnb.html',
-                           states=storage.all(State),
-                           cites=storage.all(City),
-                           amenities=storage.all(Amenity),
-                           places=storage.all(Place),
-                           users=storage.all(User))
-
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port='5000')
+if __name__ == "__main__":
+    app.run(host="0.0.0.0")
